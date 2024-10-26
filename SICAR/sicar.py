@@ -134,7 +134,7 @@ class Sicar(Url):
         """
         self._get(self._INDEX)
 
-    def _get(self, url: str, *args, **kwargs):
+    def _get(self, url: str, *args, timeout: int = 60, **kwargs):
         """
         Send a GET request to the specified URL using the session.
 
@@ -149,12 +149,14 @@ class Sicar(Url):
         Raises:
             UrlNotOkException: If the response from the GET request is not OK (status code is not 200).
         """
-        response = self._session.get(url=url, *args, **kwargs)
 
-        if response.status_code not in [httpx.codes.OK, httpx.codes.FOUND]:
-            raise UrlNotOkException(url)
+    response = self._session.get(url=url, *args, timeout=timeout, **kwargs)
 
-        return response
+    if response.status_code not in [httpx.codes.OK, httpx.codes.FOUND]:
+        raise UrlNotOkException(url)
+
+    return response
+
 
     def _download_captcha(self) -> Image:
         """
@@ -186,6 +188,7 @@ class Sicar(Url):
         captcha: str,
         folder: str,
         chunk_size: int = 1024,
+        timeout: int = 60,        
     ) -> Path:
         """
         Download polygon for the specified state.
@@ -208,12 +211,11 @@ class Sicar(Url):
             state code and captcha. The response is then streamed and saved to a file in chunks. A progress bar is displayed
             during the download. The downloaded file path is returned.
         """
-
         query = urlencode(
-            {"idEstado": state.value, "tipoBase": polygon.value, "ReCaptcha": captcha}
-        )
+        {"idEstado": state.value, "tipoBase": polygon.value, "ReCaptcha": captcha}
+    )
 
-        with self._session.stream("GET", f"{self._DOWNLOAD_BASE}?{query}") as response:
+    with self._session.stream("GET", f"{self._DOWNLOAD_BASE}?{query}", timeout=timeout) as response:
             try:
                 if response.status_code != httpx.codes.OK:
                     raise UrlNotOkException(f"{self._DOWNLOAD_BASE}?{query}")
